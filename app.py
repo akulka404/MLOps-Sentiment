@@ -1,18 +1,17 @@
-# app.py  –  35 clean lines
+import os
+import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
 from transformers import pipeline
 
 app = FastAPI(title="Mini-MLOps Sentiment API")
 
-# 1. load the pretrained model once (CPU-only)
-sentiment_clf = pipeline(
+sentiment = pipeline(
     "sentiment-analysis",
     model="distilbert-base-uncased-finetuned-sst-2-english",
-    device=-1,          # -1 = CPU
+    device=-1,
 )
 
-# 2. input / output schemas
 class TextIn(BaseModel):
     text: str
 
@@ -20,8 +19,12 @@ class PredictionOut(BaseModel):
     label: str
     score: float
 
-# 3. prediction endpoint
 @app.post("/predict", response_model=PredictionOut)
 def predict(payload: TextIn):
-    pred = sentiment_clf(payload.text)[0]     # returns dict
+    pred = sentiment(payload.text)[0]
     return PredictionOut(label=pred["label"], score=pred["score"])
+
+# ⬇︎ only addition ⬇︎
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8080))   # Render sets $PORT
+    uvicorn.run("app:app", host="0.0.0.0", port=port)
